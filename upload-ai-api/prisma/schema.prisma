@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Cada model representa uma tabela no banco de dados
+// Campo id é do tipo string, isso o primas adapta para o tipo do banco selecionado
+//@ significa que é um primary key
+// @default é o valor do cmpo, sendo que passado uma função que gera ids unicos para o campo ja que é uma primary key uuid()
+model Video {
+  id            String   @id @default(uuid())
+  name          String //Nome do arquivo
+  path          String //Caminho do arquivo
+  transcription String? //Transcrição do video que é opcional, isso é abilidado pelo "?"
+  createdAt     DateTime @default(now()) //Data de criação que recebe como valo padrão no vampo uma função que retorna a data atual
+}
+
+model Prompt {
+  id       String @id @default(uuid())
+  title    String
+  template String
+}
