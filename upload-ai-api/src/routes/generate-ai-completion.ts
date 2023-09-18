@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { z } from 'zod' //Importando biblioteca de validação
+import { streamToResponse, OpenAIStream } from 'ai'
 import { prisma } from "../lib/prisma"; //Importando o banco
 import { createReadStream } from "fs";
 import { openai } from '../lib/openai'
@@ -9,12 +10,12 @@ export async function generateAiCompletionRoute(app: FastifyInstance) {
     app.post('/ai/complete', async(req, reply) => {
         const bodySchema = z.object({
             videoId: z.string().uuid(),
-            template: z.string(),
+            prompt: z.string(),
             temperature: z.number().min(0).max(1).default(0.5)
         })
 
         //Vai validar o formato do prompt de acordo com o Squema feito acima e se for valido ele adere o valor no prompt
-        const { videoId, template, temperature } = bodySchema.parse(req.body)
+        const { videoId, prompt, temperature } = bodySchema.parse(req.body)
 
         //Localizando o video by ID
         const video = await prisma.video.findUniqueOrThrow({
@@ -29,7 +30,7 @@ export async function generateAiCompletionRoute(app: FastifyInstance) {
         }
 
         // aderindo o prompt message
-        const promptMessage = template.replace('{transcription}', video.transcription)
+        const promptMessage = prompt.replace('{transcription}', video.transcription)
 
         //Enviando para a AI
 
@@ -38,11 +39,19 @@ export async function generateAiCompletionRoute(app: FastifyInstance) {
             temperature,
             messages: [
                 { role: 'user', content: promptMessage } 
-            ]
+            ],
+            stream: true
         })
 
-        return response
- 
+        //Mecanismo de stream para os textareas
+        const strem = OpenAIStream(response)
+
+        streamToResponse(strem, reply.raw, {
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+            }
+        })
 
     })  
 }
